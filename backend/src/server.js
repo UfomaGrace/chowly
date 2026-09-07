@@ -10,6 +10,9 @@ import paymentRoutes from './routes/payments.js';
 import orderEventRoutes from './routes/order_events.js';
 import customerRoutes from './routes/customers.js';
 import diningTableRoutes from './routes/dining_tables.js';
+import complaintRoutes from './routes/complaints.js';
+import ratingRoutes from './routes/ratings.js';
+
 
 const app = express();
 const PORT = 5000;
@@ -31,6 +34,8 @@ app.use('/api/order-events', orderEventRoutes);
 
 app.use('/api/customers', customerRoutes);
 app.use('/api/dining-tables', diningTableRoutes);
+app.use('/api/complaints', complaintRoutes);
+app.use('/api/ratings', ratingRoutes);
 
 app.listen(PORT, () => {
   console.log(`Chowly backend running on http://localhost:${PORT}`);

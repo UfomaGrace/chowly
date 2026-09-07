@@ -10,6 +10,9 @@ import {
   getDiningTables,
   createOrder,
   createOrderItem,
+  createComplaint,
+  createRating,
+  createPayment,
 } from '../services/api';
 
 function Home() {
@@ -27,6 +30,23 @@ function Home() {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [message, setMessage] = useState('');
   const [submittedOrder, setSubmittedOrder] = useState(null);
+
+  // Payment state
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+  const [paymentSubmitted, setPaymentSubmitted] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState(null);
+
+  // Rating state
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+
+  // Complaint state
+  const [complaintDescription, setComplaintDescription] = useState('');
+  const [isSubmittingComplaint, setIsSubmittingComplaint] = useState(false);
+  const [complaintSubmitted, setComplaintSubmitted] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -62,8 +82,7 @@ function Home() {
   const addToCart = (item) => {
     setCart((currentCart) => {
       const existingItem = currentCart.find(
-        (cartItem) =>
-          cartItem.menu_item_id === item.menu_item_id
+        (cartItem) => cartItem.menu_item_id === item.menu_item_id
       );
 
       if (existingItem) {
@@ -120,8 +139,7 @@ function Home() {
   const selectedMenu = selectedRestaurant
     ? menus.find(
         (menu) =>
-          menu.restaurant_id ===
-          selectedRestaurant.restaurant_id
+          menu.restaurant_id === selectedRestaurant.restaurant_id
       )
     : null;
 
@@ -134,8 +152,7 @@ function Home() {
     : [];
 
   const total = cart.reduce(
-    (sum, item) =>
-      sum + Number(item.price) * item.quantity,
+    (sum, item) => sum + Number(item.price) * item.quantity,
     0
   );
 
@@ -150,17 +167,14 @@ function Home() {
     cart.length > 0
       ? Math.max(
           ...cart.map(
-            (item) =>
-              Number(item.preparation_time) || 0
+            (item) => Number(item.preparation_time) || 0
           )
         )
       : 0;
 
   const placeOrder = async () => {
     if (cart.length === 0) {
-      setMessage(
-        'Please add at least one item to your cart.'
-      );
+      setMessage('Please add at least one item to your cart.');
       return;
     }
 
@@ -186,22 +200,16 @@ function Home() {
 
       const now = new Date();
 
-      const orderDate = now
-        .toISOString()
-        .split('T')[0];
+      const orderDate = now.toISOString().split('T')[0];
 
-      const orderTime = now
-        .toTimeString()
-        .split(' ')[0];
+      const orderTime = now.toTimeString().split(' ')[0];
 
       const orderData = {
         order_id: orderId,
         table_id: selectedTable,
         customer_id: selectedCustomer,
 
-        // The order starts unassigned.
-        // A waiter will be assigned from the
-        // Waiter Dashboard.
+        // New orders start without a waiter.
         waiter_id: null,
 
         chef_id: 'CH001',
@@ -229,20 +237,31 @@ function Home() {
           menu_item_id: item.menu_item_id,
           quantity: item.quantity,
           unit_price: Number(item.price),
-          subtotal:
-            Number(item.price) * item.quantity,
+          subtotal: Number(item.price) * item.quantity,
         };
 
         await createOrderItem(orderItemData);
       }
 
-      // Only show the submitted order after both
-      // the order and all order items were created.
+      // Save the submitted order for payment and feedback.
       setSubmittedOrder(orderData);
 
+      // Reset order form.
       setCart([]);
       setSelectedCustomer('');
       setSelectedTable('');
+
+      // Reset payment form for the new order.
+      setPaymentMethod('');
+      setPaymentSubmitted(false);
+      setPaymentDetails(null);
+
+      // Reset feedback form for the new order.
+      setRatingValue(0);
+      setRatingComment('');
+      setRatingSubmitted(false);
+      setComplaintDescription('');
+      setComplaintSubmitted(false);
 
       setMessage(
         `Order ${orderId} has been placed successfully!`
@@ -256,6 +275,144 @@ function Home() {
       );
     } finally {
       setIsPlacingOrder(false);
+    }
+  };
+
+  // Submit payment
+  const submitPayment = async () => {
+    if (!submittedOrder) {
+      setMessage('Please place an order first.');
+      return;
+    }
+
+    if (!paymentMethod) {
+      setMessage('Please select a payment method.');
+      return;
+    }
+
+    if (paymentSubmitted) {
+      setMessage('This order has already been paid for.');
+      return;
+    }
+
+    try {
+      setIsSubmittingPayment(true);
+      setMessage('');
+
+      const paymentId = `P${crypto
+        .randomUUID()
+        .replaceAll('-', '')
+        .slice(0, 12)}`;
+
+      const payment = await createPayment({
+        payment_id: paymentId,
+        order_id: submittedOrder.order_id,
+        payment_amount: Number(submittedOrder.total_amount),
+        payment_method: paymentMethod,
+      });
+
+      setPaymentDetails(payment);
+      setPaymentSubmitted(true);
+
+      setMessage('Payment completed successfully!');
+    } catch (error) {
+      console.error(error);
+
+      setMessage(
+        error.message ||
+          'Something went wrong while processing your payment.'
+      );
+    } finally {
+      setIsSubmittingPayment(false);
+    }
+  };
+
+  // Submit customer rating
+  const submitRating = async () => {
+    if (!submittedOrder) {
+      setMessage('Please place an order first.');
+      return;
+    }
+
+    if (ratingValue === 0) {
+      setMessage('Please select a rating from 1 to 5 stars.');
+      return;
+    }
+
+    try {
+      setIsSubmittingRating(true);
+      setMessage('');
+
+      const ratingId = `R${crypto
+        .randomUUID()
+        .replaceAll('-', '')
+        .slice(0, 12)}`;
+
+      await createRating({
+        rating_id: ratingId,
+        order_id: submittedOrder.order_id,
+        customer_id: submittedOrder.customer_id,
+        rating_value: ratingValue,
+        rating_comment: ratingComment.trim() || null,
+      });
+
+      setRatingSubmitted(true);
+      setMessage('Thank you! Your rating has been submitted.');
+    } catch (error) {
+      console.error(error);
+
+      setMessage(
+        error.message ||
+          'Something went wrong while submitting your rating.'
+      );
+    } finally {
+      setIsSubmittingRating(false);
+    }
+  };
+
+  // Submit customer complaint
+  const submitComplaint = async () => {
+    if (!submittedOrder) {
+      setMessage('Please place an order first.');
+      return;
+    }
+
+    if (!complaintDescription.trim()) {
+      setMessage('Please describe your complaint.');
+      return;
+    }
+
+    try {
+      setIsSubmittingComplaint(true);
+      setMessage('');
+
+      const complaintId = `C${crypto
+        .randomUUID()
+        .replaceAll('-', '')
+        .slice(0, 12)}`;
+
+      await createComplaint({
+        complaint_id: complaintId,
+        order_id: submittedOrder.order_id,
+        customer_id: submittedOrder.customer_id,
+        complaint_description: complaintDescription.trim(),
+      });
+
+      setComplaintSubmitted(true);
+      setComplaintDescription('');
+
+      setMessage(
+        'Your complaint has been submitted successfully.'
+      );
+    } catch (error) {
+      console.error(error);
+
+      setMessage(
+        error.message ||
+          'Something went wrong while submitting your complaint.'
+      );
+    } finally {
+      setIsSubmittingComplaint(false);
     }
   };
 
@@ -359,9 +516,7 @@ function Home() {
                 }
                 className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500"
               >
-                <option value="">
-                  Select a customer
-                </option>
+                <option value="">Select a customer</option>
 
                 {customers.map((customer) => (
                   <option
@@ -417,9 +572,7 @@ function Home() {
 
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
               <div className="rounded-lg bg-gray-50 p-4">
-                <p className="text-sm text-gray-500">
-                  Items
-                </p>
+                <p className="text-sm text-gray-500">Items</p>
 
                 <p className="mt-1 text-lg font-bold text-gray-900">
                   {cartItemCount}
@@ -437,9 +590,7 @@ function Home() {
               </div>
 
               <div className="rounded-lg bg-gray-50 p-4">
-                <p className="text-sm text-gray-500">
-                  Total
-                </p>
+                <p className="text-sm text-gray-500">Total</p>
 
                 <p className="mt-1 text-lg font-bold text-gray-900">
                   ₦{total.toLocaleString()}
@@ -463,86 +614,366 @@ function Home() {
         {/* Message */}
         {message && (
           <div className="mt-6 rounded-xl bg-white p-4 shadow-sm">
-            <p className="font-medium text-gray-900">
-              {message}
-            </p>
+            <p className="font-medium text-gray-900">{message}</p>
           </div>
         )}
 
         {/* Submitted Order Details */}
         {submittedOrder && (
-          <section className="mb-8 mt-8 rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-900">
-              Order Details
-            </h2>
+          <>
+            <section className="mb-8 mt-8 rounded-xl bg-white p-6 shadow-sm">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Order Details
+              </h2>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <p className="text-sm text-gray-500">
-                  Order ID
-                </p>
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <p className="text-sm text-gray-500">Order ID</p>
 
-                <p className="font-semibold text-gray-900">
-                  {submittedOrder.order_id}
+                  <p className="font-semibold text-gray-900">
+                    {submittedOrder.order_id}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">Customer</p>
+
+                  <p className="font-semibold text-gray-900">
+                    {submittedOrder.customer_id}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">Table</p>
+
+                  <p className="font-semibold text-gray-900">
+                    {submittedOrder.table_id}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">Status</p>
+
+                  <p className="font-semibold text-gray-900">
+                    {submittedOrder.order_status}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-lg bg-gray-50 p-4">
+                  <p className="text-sm text-gray-500">
+                    Estimated Waiting Time
+                  </p>
+
+                  <p className="mt-1 text-xl font-bold text-gray-900">
+                    {submittedOrder.waiting_time} minutes
+                  </p>
+                </div>
+
+                <div className="rounded-lg bg-gray-50 p-4">
+                  <p className="text-sm text-gray-500">
+                    Total Amount
+                  </p>
+
+                  <p className="mt-1 text-xl font-bold text-gray-900">
+                    ₦
+                    {Number(
+                      submittedOrder.total_amount
+                    ).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* Payment */}
+            <section className="mb-8 rounded-xl bg-white p-6 shadow-sm">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Payment
+                </h2>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Complete payment for your order.
                 </p>
               </div>
 
-              <div>
-                <p className="text-sm text-gray-500">
-                  Customer
-                </p>
+              {paymentSubmitted && paymentDetails ? (
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-900 text-white">
+                      ✓
+                    </div>
 
-                <p className="font-semibold text-gray-900">
-                  {submittedOrder.customer_id}
+                    <div>
+                      <h3 className="font-bold text-gray-900">
+                        Payment Successful
+                      </h3>
+
+                      <p className="text-sm text-gray-500">
+                        Your payment has been recorded.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                      <p className="text-sm text-gray-500">
+                        Payment ID
+                      </p>
+
+                      <p className="mt-1 font-semibold text-gray-900">
+                        {paymentDetails.payment_id}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-gray-500">
+                        Amount Paid
+                      </p>
+
+                      <p className="mt-1 font-semibold text-gray-900">
+                        ₦
+                        {Number(
+                          paymentDetails.payment_amount
+                        ).toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-gray-500">
+                        Method
+                      </p>
+
+                      <p className="mt-1 font-semibold text-gray-900">
+                        {paymentDetails.payment_method}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-gray-500">
+                        Status
+                      </p>
+
+                      <p className="mt-1 font-semibold text-gray-900">
+                        {paymentDetails.payment_status}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="rounded-xl border border-gray-200 p-6">
+                    <p className="text-sm text-gray-500">
+                      Amount to Pay
+                    </p>
+
+                    <p className="mt-2 text-3xl font-bold text-gray-900">
+                      ₦
+                      {Number(
+                        submittedOrder.total_amount
+                      ).toLocaleString()}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-gray-200 p-6">
+                    <label
+                      htmlFor="payment-method"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Payment Method
+                    </label>
+
+                    <select
+                      id="payment-method"
+                      value={paymentMethod}
+                      onChange={(event) =>
+                        setPaymentMethod(event.target.value)
+                      }
+                      className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500"
+                    >
+                      <option value="">
+                        Select payment method
+                      </option>
+                      <option value="Cash">
+                        Cash
+                      </option>
+                      <option value="Card">
+                        Card
+                      </option>
+                      <option value="Bank Transfer">
+                        Bank Transfer
+                      </option>
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={submitPayment}
+                      disabled={isSubmittingPayment}
+                      className="mt-4 w-full rounded-lg bg-gray-900 px-5 py-3 font-medium text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isSubmittingPayment
+                        ? 'Processing Payment...'
+                        : 'Pay Now'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* Rating and Complaint */}
+            <section className="mb-8 rounded-xl bg-white p-6 shadow-sm">
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Feedback
+                </h2>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Share your experience with this order.
                 </p>
               </div>
 
-              <div>
-                <p className="text-sm text-gray-500">
-                  Table
-                </p>
+              <div className="grid gap-8 lg:grid-cols-2">
+                {/* Rating */}
+                <div className="rounded-xl border border-gray-200 p-6">
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Rate Your Order
+                  </h3>
 
-                <p className="font-semibold text-gray-900">
-                  {submittedOrder.table_id}
-                </p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    How was your experience?
+                  </p>
+
+                  {ratingSubmitted ? (
+                    <div className="mt-6 rounded-lg bg-gray-50 p-4">
+                      <p className="font-medium text-gray-900">
+                        ✓ Rating submitted successfully.
+                      </p>
+
+                      <p className="mt-1 text-sm text-gray-500">
+                        Thank you for your feedback!
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mt-6 flex gap-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() =>
+                              setRatingValue(star)
+                            }
+                            className={`text-3xl transition ${
+                              star <= ratingValue
+                                ? 'text-yellow-400'
+                                : 'text-gray-300'
+                            }`}
+                            aria-label={`Rate ${star} out of 5`}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+
+                      <p className="mt-2 text-sm text-gray-500">
+                        {ratingValue > 0
+                          ? `${ratingValue} out of 5`
+                          : 'Select a rating'}
+                      </p>
+
+                      <label
+                        htmlFor="rating-comment"
+                        className="mt-6 block text-sm font-medium text-gray-700"
+                      >
+                        Comment (optional)
+                      </label>
+
+                      <textarea
+                        id="rating-comment"
+                        value={ratingComment}
+                        onChange={(event) =>
+                          setRatingComment(
+                            event.target.value
+                          )
+                        }
+                        rows="4"
+                        placeholder="Tell us about your experience..."
+                        className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-gray-500"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={submitRating}
+                        disabled={isSubmittingRating}
+                        className="mt-4 rounded-lg bg-gray-900 px-5 py-3 font-medium text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isSubmittingRating
+                          ? 'Submitting...'
+                          : 'Submit Rating'}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Complaint */}
+                <div className="rounded-xl border border-gray-200 p-6">
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Having a Problem?
+                  </h3>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Tell us what went wrong with your order.
+                  </p>
+
+                  {complaintSubmitted ? (
+                    <div className="mt-6 rounded-lg bg-gray-50 p-4">
+                      <p className="font-medium text-gray-900">
+                        ✓ Complaint submitted successfully.
+                      </p>
+
+                      <p className="mt-1 text-sm text-gray-500">
+                        A waiter will review your complaint.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <label
+                        htmlFor="complaint"
+                        className="mt-6 block text-sm font-medium text-gray-700"
+                      >
+                        Complaint
+                      </label>
+
+                      <textarea
+                        id="complaint"
+                        value={complaintDescription}
+                        onChange={(event) =>
+                          setComplaintDescription(
+                            event.target.value
+                          )
+                        }
+                        rows="7"
+                        placeholder="Describe the problem with your order..."
+                        className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-gray-500"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={submitComplaint}
+                        disabled={isSubmittingComplaint}
+                        className="mt-4 rounded-lg bg-gray-900 px-5 py-3 font-medium text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isSubmittingComplaint
+                          ? 'Submitting...'
+                          : 'Submit Complaint'}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-
-              <div>
-                <p className="text-sm text-gray-500">
-                  Status
-                </p>
-
-                <p className="font-semibold text-gray-900">
-                  {submittedOrder.order_status}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-lg bg-gray-50 p-4">
-                <p className="text-sm text-gray-500">
-                  Estimated Waiting Time
-                </p>
-
-                <p className="mt-1 text-xl font-bold text-gray-900">
-                  {submittedOrder.waiting_time} minutes
-                </p>
-              </div>
-
-              <div className="rounded-lg bg-gray-50 p-4">
-                <p className="text-sm text-gray-500">
-                  Total Amount
-                </p>
-
-                <p className="mt-1 text-xl font-bold text-gray-900">
-                  ₦
-                  {Number(
-                    submittedOrder.total_amount
-                  ).toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </section>
+            </section>
+          </>
         )}
       </div>
     </main>
