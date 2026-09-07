@@ -1,75 +1,53 @@
-const API_URL = 'http://localhost:5000/api';
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  'https://chowly-backend-lwk1.onrender.com/api';
 
-const handleResponse = async (response, fallbackMessage) => {
-  const data = await response.json().catch(() => null);
+async function handleResponse(response) {
+  const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data?.error || fallbackMessage);
+    throw new Error(data.error || data.message || 'Something went wrong');
   }
 
   return data;
-};
+}
 
-// =========================
-// RESTAURANTS
-// =========================
-
-export const getRestaurants = async () => {
+export async function getRestaurants() {
   const response = await fetch(`${API_URL}/restaurants`);
-  return handleResponse(response, 'Failed to fetch restaurants');
-};
+  return handleResponse(response);
+}
 
-// =========================
-// MENUS
-// =========================
-
-export const getMenus = async () => {
+export async function getMenus() {
   const response = await fetch(`${API_URL}/menus`);
-  return handleResponse(response, 'Failed to fetch menus');
-};
+  return handleResponse(response);
+}
 
-// =========================
-// MENU ITEMS
-// =========================
-
-export const getMenuItems = async () => {
+export async function getMenuItems() {
   const response = await fetch(`${API_URL}/menu-items`);
-  return handleResponse(response, 'Failed to fetch menu items');
-};
+  return handleResponse(response);
+}
 
-// =========================
-// CUSTOMERS
-// =========================
-
-export const getCustomers = async () => {
+export async function getCustomers() {
   const response = await fetch(`${API_URL}/customers`);
-  return handleResponse(response, 'Failed to fetch customers');
-};
+  return handleResponse(response);
+}
 
-// =========================
-// DINING TABLES
-// =========================
-
-export const getDiningTables = async () => {
+export async function getDiningTables() {
   const response = await fetch(`${API_URL}/dining-tables`);
-  return handleResponse(response, 'Failed to fetch dining tables');
-};
+  return handleResponse(response);
+}
 
-// =========================
-// ORDERS
-// =========================
-
-export const getOrders = async () => {
+export async function getOrders() {
   const response = await fetch(`${API_URL}/orders`);
-  return handleResponse(response, 'Failed to fetch orders');
-};
+  return handleResponse(response);
+}
 
-export const getOrderById = async (orderId) => {
+export async function getOrderById(orderId) {
   const response = await fetch(`${API_URL}/orders/${orderId}`);
-  return handleResponse(response, 'Failed to fetch order');
-};
+  return handleResponse(response);
+}
 
-export const createOrder = async (orderData) => {
+export async function createOrder(orderData) {
   const response = await fetch(`${API_URL}/orders`, {
     method: 'POST',
     headers: {
@@ -78,10 +56,10 @@ export const createOrder = async (orderData) => {
     body: JSON.stringify(orderData),
   });
 
-  return handleResponse(response, 'Failed to create order');
-};
+  return handleResponse(response);
+}
 
-export const updateOrder = async (orderId, orderData) => {
+export async function updateOrder(orderId, orderData) {
   const response = await fetch(`${API_URL}/orders/${orderId}`, {
     method: 'PUT',
     headers: {
@@ -90,19 +68,15 @@ export const updateOrder = async (orderId, orderData) => {
     body: JSON.stringify(orderData),
   });
 
-  return handleResponse(response, 'Failed to update order');
-};
+  return handleResponse(response);
+}
 
-// =========================
-// ORDER ITEMS
-// =========================
-
-export const getOrderItems = async () => {
+export async function getOrderItems() {
   const response = await fetch(`${API_URL}/order-items`);
-  return handleResponse(response, 'Failed to fetch order items');
-};
+  return handleResponse(response);
+}
 
-export const createOrderItem = async (orderItemData) => {
+export async function createOrderItem(orderItemData) {
   const response = await fetch(`${API_URL}/order-items`, {
     method: 'POST',
     headers: {
@@ -111,24 +85,20 @@ export const createOrderItem = async (orderItemData) => {
     body: JSON.stringify(orderItemData),
   });
 
-  return handleResponse(response, 'Failed to create order item');
-};
+  return handleResponse(response);
+}
 
-// =========================
-// COMPLAINTS
-// =========================
-
-export const getComplaints = async () => {
+export async function getComplaints() {
   const response = await fetch(`${API_URL}/complaints`);
-  return handleResponse(response, 'Failed to fetch complaints');
-};
+  return handleResponse(response);
+}
 
-export const getComplaintById = async (complaintId) => {
+export async function getComplaintById(complaintId) {
   const response = await fetch(`${API_URL}/complaints/${complaintId}`);
-  return handleResponse(response, 'Failed to fetch complaint');
-};
+  return handleResponse(response);
+}
 
-export const createComplaint = async (complaintData) => {
+export async function createComplaint(complaintData) {
   const response = await fetch(`${API_URL}/complaints`, {
     method: 'POST',
     headers: {
@@ -137,10 +107,10 @@ export const createComplaint = async (complaintData) => {
     body: JSON.stringify(complaintData),
   });
 
-  return handleResponse(response, 'Failed to create complaint');
-};
+  return handleResponse(response);
+}
 
-export const updateComplaint = async (complaintId, complaintData) => {
+export async function updateComplaint(complaintId, complaintData) {
   const response = await fetch(`${API_URL}/complaints/${complaintId}`, {
     method: 'PUT',
     headers: {
@@ -149,24 +119,20 @@ export const updateComplaint = async (complaintId, complaintData) => {
     body: JSON.stringify(complaintData),
   });
 
-  return handleResponse(response, 'Failed to update complaint');
-};
+  return handleResponse(response);
+}
 
-// =========================
-// RATINGS
-// =========================
-
-export const getRatings = async () => {
+export async function getRatings() {
   const response = await fetch(`${API_URL}/ratings`);
-  return handleResponse(response, 'Failed to fetch ratings');
-};
+  return handleResponse(response);
+}
 
-export const getRatingById = async (ratingId) => {
+export async function getRatingById(ratingId) {
   const response = await fetch(`${API_URL}/ratings/${ratingId}`);
-  return handleResponse(response, 'Failed to fetch rating');
-};
+  return handleResponse(response);
+}
 
-export const createRating = async (ratingData) => {
+export async function createRating(ratingData) {
   const response = await fetch(`${API_URL}/ratings`, {
     method: 'POST',
     headers: {
@@ -175,24 +141,20 @@ export const createRating = async (ratingData) => {
     body: JSON.stringify(ratingData),
   });
 
-  return handleResponse(response, 'Failed to create rating');
-};
+  return handleResponse(response);
+}
 
-// =========================
-// PAYMENTS
-// =========================
-
-export const getPayments = async () => {
+export async function getPayments() {
   const response = await fetch(`${API_URL}/payments`);
-  return handleResponse(response, 'Failed to fetch payments');
-};
+  return handleResponse(response);
+}
 
-export const getPaymentByOrder = async (orderId) => {
+export async function getPaymentByOrder(orderId) {
   const response = await fetch(`${API_URL}/payments/order/${orderId}`);
-  return handleResponse(response, 'Failed to fetch payment');
-};
+  return handleResponse(response);
+}
 
-export const createPayment = async (paymentData) => {
+export async function createPayment(paymentData) {
   const response = await fetch(`${API_URL}/payments`, {
     method: 'POST',
     headers: {
@@ -201,5 +163,5 @@ export const createPayment = async (paymentData) => {
     body: JSON.stringify(paymentData),
   });
 
-  return handleResponse(response, 'Failed to create payment');
-};
+  return handleResponse(response);
+}
