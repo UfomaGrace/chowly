@@ -23,6 +23,7 @@ function WaiterDashboard() {
   const [updatingOrder, setUpdatingOrder] = useState(null);
   const [updatingComplaint, setUpdatingComplaint] = useState(null);
 
+  const [editingStaff, setEditingStaff] = useState({});
   const [message, setMessage] = useState('');
 
   // Demo waiter currently using the dashboard
@@ -131,13 +132,10 @@ function WaiterDashboard() {
       setUpdatingOrder(order.order_id);
       setMessage('');
 
-      const updatedOrder = await updateOrder(
-        order.order_id,
-        {
-          waiter_id: waiterId,
-          order_status: 'Confirmed',
-        }
-      );
+      const updatedOrder = await updateOrder(order.order_id, {
+        waiter_id: waiterId,
+        order_status: 'Confirmed',
+      });
 
       setOrders((currentOrders) =>
         currentOrders.map((currentOrder) =>
@@ -151,9 +149,7 @@ function WaiterDashboard() {
         `Order ${order.order_id} has been assigned to waiter ${waiterId}.`
       );
     } catch (error) {
-      setMessage(
-        error.message || 'Failed to assign order'
-      );
+      setMessage(error.message || 'Failed to assign order');
     } finally {
       setUpdatingOrder(null);
     }
@@ -195,6 +191,11 @@ function WaiterDashboard() {
             : currentOrder
         )
       );
+
+      setEditingStaff((current) => ({
+        ...current,
+        [order.order_id]: false,
+      }));
 
       const selectedChef = chefs.find(
         (chef) => chef.chef_id === chefId
@@ -504,6 +505,17 @@ function WaiterDashboard() {
                 const isUpdating =
                   updatingOrder === order.order_id;
 
+                const hasKitchenStaff =
+                  Boolean(
+                    order.chef_id &&
+                    order.bartender_id
+                  );
+
+                const isEditingStaff =
+                  Boolean(
+                    editingStaff[order.order_id]
+                  );
+
                 return (
                   <div
                     key={order.order_id}
@@ -630,129 +642,204 @@ function WaiterDashboard() {
                         </div>
                       )}
 
-                    {/* STAFF SELECTION */}
+                    {/* STAFF SELECTION / EDIT */}
 
                     {isAssignedToMe && (
                       <div className="mt-5 border-t border-gray-100 pt-5">
 
-                        <h3 className="mb-2 font-semibold text-gray-900">
-                          Record Preparation Staff
-                        </h3>
+                        {!hasKitchenStaff || isEditingStaff ? (
 
-                        <p className="mb-4 text-sm text-gray-500">
-                          Select the chef and bartender responsible
-                          for preparing this order.
-                        </p>
+                          <>
+                            <h3 className="mb-2 font-semibold text-gray-900">
+                              Record Preparation Staff
+                            </h3>
 
-                        <div className="grid gap-4 md:grid-cols-2">
+                            <p className="mb-4 text-sm text-gray-500">
+                              Select the chef and bartender responsible
+                              for preparing this order.
+                            </p>
 
-                          {/* CHEF */}
+                            <div className="grid gap-4 md:grid-cols-2">
 
-                          <div>
-                            <label
-                              htmlFor={`chef-${order.order_id}`}
-                              className="mb-2 block text-sm font-medium text-gray-700"
-                            >
-                              Chef
-                            </label>
+                              {/* CHEF */}
 
-                            <select
-                              id={`chef-${order.order_id}`}
-                              defaultValue={
-                                order.chef_id || ''
-                              }
-                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-black"
-                            >
-                              <option value="">
-                                Select Chef
-                              </option>
-
-                              {chefs.map((chef) => (
-                                <option
-                                  key={chef.chef_id}
-                                  value={chef.chef_id}
+                              <div>
+                                <label
+                                  htmlFor={`chef-${order.order_id}`}
+                                  className="mb-2 block text-sm font-medium text-gray-700"
                                 >
-                                  {chef.chef_id} -{' '}
-                                  {chef.chef_name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                                  Chef
+                                </label>
 
-                          {/* BARTENDER */}
-
-                          <div>
-                            <label
-                              htmlFor={`bartender-${order.order_id}`}
-                              className="mb-2 block text-sm font-medium text-gray-700"
-                            >
-                              Bartender
-                            </label>
-
-                            <select
-                              id={`bartender-${order.order_id}`}
-                              defaultValue={
-                                order.bartender_id || ''
-                              }
-                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-black"
-                            >
-                              <option value="">
-                                Select Bartender
-                              </option>
-
-                              {bartenders.map(
-                                (bartender) => (
-                                  <option
-                                    key={
-                                      bartender.bartender_id
-                                    }
-                                    value={
-                                      bartender.bartender_id
-                                    }
-                                  >
-                                    {bartender.bartender_id} -{' '}
-                                    {
-                                      bartender.bartender_name
-                                    }
+                                <select
+                                  id={`chef-${order.order_id}`}
+                                  defaultValue={
+                                    order.chef_id || ''
+                                  }
+                                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-black"
+                                >
+                                  <option value="">
+                                    Select Chef
                                   </option>
-                                )
+
+                                  {chefs.map((chef) => (
+                                    <option
+                                      key={chef.chef_id}
+                                      value={chef.chef_id}
+                                    >
+                                      {chef.chef_id} -{' '}
+                                      {chef.chef_name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* BARTENDER */}
+
+                              <div>
+                                <label
+                                  htmlFor={`bartender-${order.order_id}`}
+                                  className="mb-2 block text-sm font-medium text-gray-700"
+                                >
+                                  Bartender
+                                </label>
+
+                                <select
+                                  id={`bartender-${order.order_id}`}
+                                  defaultValue={
+                                    order.bartender_id || ''
+                                  }
+                                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-black"
+                                >
+                                  <option value="">
+                                    Select Bartender
+                                  </option>
+
+                                  {bartenders.map(
+                                    (bartender) => (
+                                      <option
+                                        key={
+                                          bartender.bartender_id
+                                        }
+                                        value={
+                                          bartender.bartender_id
+                                        }
+                                      >
+                                        {
+                                          bartender.bartender_id
+                                        } -{' '}
+                                        {
+                                          bartender.bartender_name
+                                        }
+                                      </option>
+                                    )
+                                  )}
+                                </select>
+                              </div>
+
+                            </div>
+
+                            <div className="mt-4 flex flex-wrap gap-2">
+
+                              <button
+                                onClick={() => {
+                                  const chefSelect =
+                                    document.getElementById(
+                                      `chef-${order.order_id}`
+                                    );
+
+                                  const bartenderSelect =
+                                    document.getElementById(
+                                      `bartender-${order.order_id}`
+                                    );
+
+                                  const chefId =
+                                    chefSelect?.value;
+
+                                  const bartenderId =
+                                    bartenderSelect?.value;
+
+                                  assignKitchenStaff(
+                                    order,
+                                    chefId,
+                                    bartenderId
+                                  );
+                                }}
+                                disabled={isUpdating}
+                                className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {isUpdating
+                                  ? 'Saving...'
+                                  : hasKitchenStaff
+                                    ? 'Save Changes'
+                                    : 'Save Chef & Bartender'}
+                              </button>
+
+                              {hasKitchenStaff && (
+                                <button
+                                  onClick={() =>
+                                    setEditingStaff(
+                                      (current) => ({
+                                        ...current,
+                                        [order.order_id]: false,
+                                      })
+                                    )
+                                  }
+                                  disabled={isUpdating}
+                                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                >
+                                  Cancel
+                                </button>
                               )}
-                            </select>
+
+                            </div>
+                          </>
+
+                        ) : (
+
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+                            <div>
+                              <h3 className="font-semibold text-gray-900">
+                                Preparation Staff Recorded
+                              </h3>
+
+                              <div className="mt-2 flex flex-col gap-1 text-sm text-gray-600 sm:flex-row sm:gap-5">
+                                <span>
+                                  👨‍🍳 Chef:{' '}
+                                  <span className="font-medium text-gray-900">
+                                    {getChefName(order.chef_id)}
+                                  </span>
+                                </span>
+
+                                <span>
+                                  🍹 Bartender:{' '}
+                                  <span className="font-medium text-gray-900">
+                                    {getBartenderName(
+                                      order.bartender_id
+                                    )}
+                                  </span>
+                                </span>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() =>
+                                setEditingStaff(
+                                  (current) => ({
+                                    ...current,
+                                    [order.order_id]: true,
+                                  })
+                                )
+                              }
+                              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                              Edit Staff
+                            </button>
+
                           </div>
 
-                        </div>
-
-                        <button
-                          onClick={() => {
-                            const chefSelect =
-                              document.getElementById(
-                                `chef-${order.order_id}`
-                              );
-
-                            const bartenderSelect =
-                              document.getElementById(
-                                `bartender-${order.order_id}`
-                              );
-
-                            const chefId =
-                              chefSelect?.value;
-
-                            const bartenderId =
-                              bartenderSelect?.value;
-
-                            assignKitchenStaff(
-                              order,
-                              chefId,
-                              bartenderId
-                            );
-                          }}
-                          disabled={isUpdating}
-                          className="mt-4 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {isUpdating
-                            ? 'Saving...'
-                            : 'Save Chef & Bartender'}
-                        </button>
+                        )}
 
                       </div>
                     )}
