@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import {
   getOrders,
@@ -5,12 +6,16 @@ import {
   getComplaints,
   updateComplaint,
   getRatings,
+  getChefs,
+  getBartenders,
 } from '../services/api';
 
 function WaiterDashboard() {
   const [orders, setOrders] = useState([]);
   const [complaints, setComplaints] = useState([]);
   const [ratings, setRatings] = useState([]);
+  const [chefs, setChefs] = useState([]);
+  const [bartenders, setBartenders] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [loadingFeedback, setLoadingFeedback] = useState(true);
@@ -20,7 +25,7 @@ function WaiterDashboard() {
 
   const [message, setMessage] = useState('');
 
-  // Demo waiter currently logged in
+  // Demo waiter currently using the dashboard
   const waiterId = 'W001';
 
   // =========================
@@ -30,6 +35,7 @@ function WaiterDashboard() {
   const loadOrders = async () => {
     try {
       setLoading(true);
+      setMessage('');
 
       const data = await getOrders();
 
@@ -74,23 +80,31 @@ function WaiterDashboard() {
 
     const fetchDashboardData = async () => {
       try {
-        const [orderData, complaintData, ratingData] =
-          await Promise.all([
-            getOrders(),
-            getComplaints(),
-            getRatings(),
-          ]);
+        const [
+          orderData,
+          complaintData,
+          ratingData,
+          chefData,
+          bartenderData,
+        ] = await Promise.all([
+          getOrders(),
+          getComplaints(),
+          getRatings(),
+          getChefs(),
+          getBartenders(),
+        ]);
 
         if (!cancelled) {
           setOrders(orderData || []);
           setComplaints(complaintData || []);
           setRatings(ratingData || []);
+          setChefs(chefData || []);
+          setBartenders(bartenderData || []);
         }
       } catch (error) {
         if (!cancelled) {
           setMessage(
-            error.message ||
-              'Failed to load dashboard data'
+            error.message || 'Failed to load dashboard data'
           );
         }
       } finally {
@@ -109,7 +123,7 @@ function WaiterDashboard() {
   }, []);
 
   // =========================
-  // ASSIGN ORDER
+  // ASSIGN WAITER
   // =========================
 
   const assignOrder = async (order) => {
@@ -146,6 +160,69 @@ function WaiterDashboard() {
   };
 
   // =========================
+  // ASSIGN CHEF + BARTENDER
+  // =========================
+
+  const assignKitchenStaff = async (
+    order,
+    chefId,
+    bartenderId
+  ) => {
+    try {
+      setUpdatingOrder(order.order_id);
+      setMessage('');
+
+      if (!chefId || !bartenderId) {
+        setMessage(
+          'Please select both a chef and a bartender.'
+        );
+        setUpdatingOrder(null);
+        return;
+      }
+
+      const updatedOrder = await updateOrder(
+        order.order_id,
+        {
+          chef_id: chefId,
+          bartender_id: bartenderId,
+        }
+      );
+
+      setOrders((currentOrders) =>
+        currentOrders.map((currentOrder) =>
+          currentOrder.order_id === order.order_id
+            ? updatedOrder
+            : currentOrder
+        )
+      );
+
+      const selectedChef = chefs.find(
+        (chef) => chef.chef_id === chefId
+      );
+
+      const selectedBartender = bartenders.find(
+        (bartender) =>
+          bartender.bartender_id === bartenderId
+      );
+
+      setMessage(
+        `Order ${order.order_id} assigned to ${
+          selectedChef?.chef_name || chefId
+        } and ${
+          selectedBartender?.bartender_name || bartenderId
+        }.`
+      );
+    } catch (error) {
+      setMessage(
+        error.message ||
+          'Failed to record chef and bartender'
+      );
+    } finally {
+      setUpdatingOrder(null);
+    }
+  };
+
+  // =========================
   // UPDATE ORDER STATUS
   // =========================
 
@@ -174,7 +251,7 @@ function WaiterDashboard() {
       );
     } catch (error) {
       setMessage(
-        error.message || 'Failed to update order'
+        error.message || 'Failed to update order status'
       );
     } finally {
       setUpdatingOrder(null);
@@ -219,7 +296,7 @@ function WaiterDashboard() {
   };
 
   // =========================
-  // STATUS COLOURS
+  // STATUS CLASSES
   // =========================
 
   const getStatusClass = (status) => {
@@ -256,6 +333,31 @@ function WaiterDashboard() {
   };
 
   // =========================
+  // FIND STAFF NAMES
+  // =========================
+
+  const getChefName = (chefId) => {
+    const chef = chefs.find(
+      (item) => item.chef_id === chefId
+    );
+
+    return chef
+      ? `${chef.chef_id} - ${chef.chef_name}`
+      : 'Not assigned';
+  };
+
+  const getBartenderName = (bartenderId) => {
+    const bartender = bartenders.find(
+      (item) =>
+        item.bartender_id === bartenderId
+    );
+
+    return bartender
+      ? `${bartender.bartender_id} - ${bartender.bartender_name}`
+      : 'Not assigned';
+  };
+
+  // =========================
   // FILTERS
   // =========================
 
@@ -276,9 +378,7 @@ function WaiterDashboard() {
     <div className="min-h-screen bg-gray-50 px-6 py-8">
       <div className="mx-auto max-w-6xl">
 
-        {/* =========================
-            HEADER
-        ========================= */}
+        {/* HEADER */}
 
         <div className="mb-8">
           <p className="text-sm font-medium text-gray-500">
@@ -290,8 +390,8 @@ function WaiterDashboard() {
           </h1>
 
           <p className="mt-2 text-gray-600">
-            Manage restaurant orders, complaints and
-            customer feedback.
+            Manage restaurant orders, staff assignments,
+            complaints and customer feedback.
           </p>
 
           <div className="mt-4 inline-block rounded-lg bg-white px-4 py-2 shadow-sm">
@@ -305,9 +405,7 @@ function WaiterDashboard() {
           </div>
         </div>
 
-        {/* =========================
-            MESSAGE
-        ========================= */}
+        {/* MESSAGE */}
 
         {message && (
           <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-800">
@@ -315,9 +413,7 @@ function WaiterDashboard() {
           </div>
         )}
 
-        {/* =========================
-            STATS
-        ========================= */}
+        {/* STATS */}
 
         <div className="mb-8 grid gap-4 sm:grid-cols-4">
 
@@ -363,9 +459,7 @@ function WaiterDashboard() {
 
         </div>
 
-        {/* =========================
-            ORDERS
-        ========================= */}
+        {/* ORDERS */}
 
         <div className="mb-8 rounded-xl bg-white p-6 shadow-sm">
 
@@ -377,7 +471,8 @@ function WaiterDashboard() {
               </h2>
 
               <p className="mt-1 text-sm text-gray-500">
-                Assign orders and manage their progress.
+                Assign orders, record preparation staff
+                and manage order progress.
               </p>
             </div>
 
@@ -415,139 +510,299 @@ function WaiterDashboard() {
                     className="rounded-xl border border-gray-200 p-5"
                   >
 
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    {/* ORDER INFORMATION */}
 
-                      <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
-                        <div>
-                          <p className="text-xs font-medium uppercase text-gray-400">
-                            Order ID
-                          </p>
+                      <div>
+                        <p className="text-xs font-medium uppercase text-gray-400">
+                          Order ID
+                        </p>
 
-                          <p className="mt-1 font-semibold text-gray-900">
-                            {order.order_id}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-medium uppercase text-gray-400">
-                            Table
-                          </p>
-
-                          <p className="mt-1 font-semibold text-gray-900">
-                            {order.table_id || 'N/A'}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-medium uppercase text-gray-400">
-                            Customer
-                          </p>
-
-                          <p className="mt-1 font-semibold text-gray-900">
-                            {order.customer_id || 'N/A'}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-medium uppercase text-gray-400">
-                            Total
-                          </p>
-
-                          <p className="mt-1 font-semibold text-gray-900">
-                            ₦
-                            {Number(
-                              order.total_amount || 0
-                            ).toLocaleString()}
-                          </p>
-                        </div>
-
+                        <p className="mt-1 font-semibold text-gray-900">
+                          {order.order_id}
+                        </p>
                       </div>
 
                       <div>
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${getStatusClass(
-                            order.order_status
-                          )}`}
-                        >
-                          {order.order_status || 'Pending'}
-                        </span>
+                        <p className="text-xs font-medium uppercase text-gray-400">
+                          Table
+                        </p>
+
+                        <p className="mt-1 font-semibold text-gray-900">
+                          {order.table_id || 'N/A'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-medium uppercase text-gray-400">
+                          Customer
+                        </p>
+
+                        <p className="mt-1 font-semibold text-gray-900">
+                          {order.customer_id || 'N/A'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-medium uppercase text-gray-400">
+                          Total
+                        </p>
+
+                        <p className="mt-1 font-semibold text-gray-900">
+                          ₦
+                          {Number(
+                            order.total_amount || 0
+                          ).toLocaleString()}
+                        </p>
                       </div>
 
                     </div>
 
-                    <div className="mt-5 flex flex-col gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                    {/* STATUS */}
 
-                      <div className="text-sm text-gray-600">
-                        <span className="font-medium">
-                          Waiter:
-                        </span>{' '}
-                        {order.waiter_id || 'Not assigned'}
+                    <div className="mt-5">
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${getStatusClass(
+                          order.order_status
+                        )}`}
+                      >
+                        {order.order_status || 'Pending'}
+                      </span>
+                    </div>
+
+                    {/* STAFF INFORMATION */}
+
+                    <div className="mt-5 grid gap-4 rounded-lg bg-gray-50 p-4 sm:grid-cols-3">
+
+                      <div>
+                        <p className="text-xs font-medium uppercase text-gray-400">
+                          Waiter
+                        </p>
+
+                        <p className="mt-1 font-medium text-gray-900">
+                          {order.waiter_id || 'Not assigned'}
+                        </p>
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
+                      <div>
+                        <p className="text-xs font-medium uppercase text-gray-400">
+                          Chef
+                        </p>
 
-                        {!isAssignedToMe &&
-                          !order.waiter_id && (
-                            <button
-                              onClick={() =>
-                                assignOrder(order)
-                              }
-                              disabled={isUpdating}
-                              className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              {isUpdating
-                                ? 'Assigning...'
-                                : 'Assign to Me'}
-                            </button>
+                        <p className="mt-1 font-medium text-gray-900">
+                          {getChefName(order.chef_id)}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-medium uppercase text-gray-400">
+                          Bartender
+                        </p>
+
+                        <p className="mt-1 font-medium text-gray-900">
+                          {getBartenderName(
+                            order.bartender_id
                           )}
-
-                        {isAssignedToMe && (
-                          <>
-                            <button
-                              onClick={() =>
-                                updateStatus(
-                                  order,
-                                  'Preparing'
-                                )
-                              }
-                              disabled={isUpdating}
-                              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                            >
-                              Preparing
-                            </button>
-
-                            <button
-                              onClick={() =>
-                                updateStatus(
-                                  order,
-                                  'Ready'
-                                )
-                              }
-                              disabled={isUpdating}
-                              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                            >
-                              Ready
-                            </button>
-
-                            <button
-                              onClick={() =>
-                                updateStatus(
-                                  order,
-                                  'Served'
-                                )
-                              }
-                              disabled={isUpdating}
-                              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                            >
-                              Served
-                            </button>
-                          </>
-                        )}
-
+                        </p>
                       </div>
 
                     </div>
+
+                    {/* ASSIGN WAITER */}
+
+                    {!isAssignedToMe &&
+                      !order.waiter_id && (
+                        <div className="mt-5 border-t border-gray-100 pt-5">
+
+                          <button
+                            onClick={() =>
+                              assignOrder(order)
+                            }
+                            disabled={isUpdating}
+                            className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isUpdating
+                              ? 'Assigning...'
+                              : 'Assign to Me'}
+                          </button>
+
+                        </div>
+                      )}
+
+                    {/* STAFF SELECTION */}
+
+                    {isAssignedToMe && (
+                      <div className="mt-5 border-t border-gray-100 pt-5">
+
+                        <h3 className="mb-2 font-semibold text-gray-900">
+                          Record Preparation Staff
+                        </h3>
+
+                        <p className="mb-4 text-sm text-gray-500">
+                          Select the chef and bartender responsible
+                          for preparing this order.
+                        </p>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+
+                          {/* CHEF */}
+
+                          <div>
+                            <label
+                              htmlFor={`chef-${order.order_id}`}
+                              className="mb-2 block text-sm font-medium text-gray-700"
+                            >
+                              Chef
+                            </label>
+
+                            <select
+                              id={`chef-${order.order_id}`}
+                              defaultValue={
+                                order.chef_id || ''
+                              }
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-black"
+                            >
+                              <option value="">
+                                Select Chef
+                              </option>
+
+                              {chefs.map((chef) => (
+                                <option
+                                  key={chef.chef_id}
+                                  value={chef.chef_id}
+                                >
+                                  {chef.chef_id} -{' '}
+                                  {chef.chef_name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* BARTENDER */}
+
+                          <div>
+                            <label
+                              htmlFor={`bartender-${order.order_id}`}
+                              className="mb-2 block text-sm font-medium text-gray-700"
+                            >
+                              Bartender
+                            </label>
+
+                            <select
+                              id={`bartender-${order.order_id}`}
+                              defaultValue={
+                                order.bartender_id || ''
+                              }
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-black"
+                            >
+                              <option value="">
+                                Select Bartender
+                              </option>
+
+                              {bartenders.map(
+                                (bartender) => (
+                                  <option
+                                    key={
+                                      bartender.bartender_id
+                                    }
+                                    value={
+                                      bartender.bartender_id
+                                    }
+                                  >
+                                    {bartender.bartender_id} -{' '}
+                                    {
+                                      bartender.bartender_name
+                                    }
+                                  </option>
+                                )
+                              )}
+                            </select>
+                          </div>
+
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            const chefSelect =
+                              document.getElementById(
+                                `chef-${order.order_id}`
+                              );
+
+                            const bartenderSelect =
+                              document.getElementById(
+                                `bartender-${order.order_id}`
+                              );
+
+                            const chefId =
+                              chefSelect?.value;
+
+                            const bartenderId =
+                              bartenderSelect?.value;
+
+                            assignKitchenStaff(
+                              order,
+                              chefId,
+                              bartenderId
+                            );
+                          }}
+                          disabled={isUpdating}
+                          className="mt-4 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {isUpdating
+                            ? 'Saving...'
+                            : 'Save Chef & Bartender'}
+                        </button>
+
+                      </div>
+                    )}
+
+                    {/* ORDER STATUS */}
+
+                    {isAssignedToMe && (
+                      <div className="mt-5 flex flex-wrap gap-2 border-t border-gray-100 pt-5">
+
+                        <button
+                          onClick={() =>
+                            updateStatus(
+                              order,
+                              'Preparing'
+                            )
+                          }
+                          disabled={isUpdating}
+                          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          Preparing
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            updateStatus(
+                              order,
+                              'Ready'
+                            )
+                          }
+                          disabled={isUpdating}
+                          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          Ready
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            updateStatus(
+                              order,
+                              'Served'
+                            )
+                          }
+                          disabled={isUpdating}
+                          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          Served
+                        </button>
+
+                      </div>
+                    )}
 
                   </div>
                 );
@@ -558,9 +813,7 @@ function WaiterDashboard() {
 
         </div>
 
-        {/* =========================
-            COMPLAINTS
-        ========================= */}
+        {/* COMPLAINTS */}
 
         <div className="mb-8 rounded-xl bg-white p-6 shadow-sm">
 
@@ -688,9 +941,7 @@ function WaiterDashboard() {
 
         </div>
 
-        {/* =========================
-            RATINGS
-        ========================= */}
+        {/* RATINGS */}
 
         <div className="rounded-xl bg-white p-6 shadow-sm">
 

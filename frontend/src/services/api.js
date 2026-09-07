@@ -1,3 +1,4 @@
+
 const API_URL =
   import.meta.env.VITE_API_URL ||
   'https://chowly-backend-lwk1.onrender.com/api';
@@ -12,30 +13,54 @@ async function handleResponse(response) {
   return data;
 }
 
+// =========================
+// RESTAURANTS
+// =========================
+
 export async function getRestaurants() {
   const response = await fetch(`${API_URL}/restaurants`);
   return handleResponse(response);
 }
+
+// =========================
+// MENUS
+// =========================
 
 export async function getMenus() {
   const response = await fetch(`${API_URL}/menus`);
   return handleResponse(response);
 }
 
+// =========================
+// MENU ITEMS
+// =========================
+
 export async function getMenuItems() {
   const response = await fetch(`${API_URL}/menu-items`);
   return handleResponse(response);
 }
+
+// =========================
+// CUSTOMERS
+// =========================
 
 export async function getCustomers() {
   const response = await fetch(`${API_URL}/customers`);
   return handleResponse(response);
 }
 
+// =========================
+// DINING TABLES
+// =========================
+
 export async function getDiningTables() {
   const response = await fetch(`${API_URL}/dining-tables`);
   return handleResponse(response);
 }
+
+// =========================
+// ORDERS
+// =========================
 
 export async function getOrders() {
   const response = await fetch(`${API_URL}/orders`);
@@ -71,6 +96,10 @@ export async function updateOrder(orderId, orderData) {
   return handleResponse(response);
 }
 
+// =========================
+// ORDER ITEMS
+// =========================
+
 export async function getOrderItems() {
   const response = await fetch(`${API_URL}/order-items`);
   return handleResponse(response);
@@ -87,6 +116,28 @@ export async function createOrderItem(orderItemData) {
 
   return handleResponse(response);
 }
+
+// =========================
+// CHEFS
+// =========================
+
+export async function getChefs() {
+  const response = await fetch(`${API_URL}/chefs`);
+  return handleResponse(response);
+}
+
+// =========================
+// BARTENDERS
+// =========================
+
+export async function getBartenders() {
+  const response = await fetch(`${API_URL}/bartenders`);
+  return handleResponse(response);
+}
+
+// =========================
+// COMPLAINTS
+// =========================
 
 export async function getComplaints() {
   const response = await fetch(`${API_URL}/complaints`);
@@ -122,6 +173,10 @@ export async function updateComplaint(complaintId, complaintData) {
   return handleResponse(response);
 }
 
+// =========================
+// RATINGS
+// =========================
+
 export async function getRatings() {
   const response = await fetch(`${API_URL}/ratings`);
   return handleResponse(response);
@@ -143,6 +198,10 @@ export async function createRating(ratingData) {
 
   return handleResponse(response);
 }
+
+// =========================
+// PAYMENTS
+// =========================
 
 export async function getPayments() {
   const response = await fetch(`${API_URL}/payments`);

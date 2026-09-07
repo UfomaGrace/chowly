@@ -12,6 +12,8 @@ import customerRoutes from './routes/customers.js';
 import diningTableRoutes from './routes/dining_tables.js';
 import complaintRoutes from './routes/complaints.js';
 import ratingRoutes from './routes/ratings.js';
+import chefRoutes from './routes/chefs.js';
+import bartenderRoutes from './routes/bartenders.js';
 
 
 const app = express();
@@ -31,6 +33,9 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/order-items', orderItemRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/order-events', orderEventRoutes);
+
+app.use('/api/chefs', chefRoutes);
+app.use('/api/bartenders', bartenderRoutes);
 
 app.use('/api/customers', customerRoutes);
 app.use('/api/dining-tables', diningTableRoutes);
