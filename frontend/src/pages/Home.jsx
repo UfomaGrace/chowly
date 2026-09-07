@@ -62,7 +62,8 @@ function Home() {
   const addToCart = (item) => {
     setCart((currentCart) => {
       const existingItem = currentCart.find(
-        (cartItem) => cartItem.menu_item_id === item.menu_item_id
+        (cartItem) =>
+          cartItem.menu_item_id === item.menu_item_id
       );
 
       if (existingItem) {
@@ -118,7 +119,9 @@ function Home() {
 
   const selectedMenu = selectedRestaurant
     ? menus.find(
-        (menu) => menu.restaurant_id === selectedRestaurant.restaurant_id
+        (menu) =>
+          menu.restaurant_id ===
+          selectedRestaurant.restaurant_id
       )
     : null;
 
@@ -131,7 +134,8 @@ function Home() {
     : [];
 
   const total = cart.reduce(
-    (sum, item) => sum + Number(item.price) * item.quantity,
+    (sum, item) =>
+      sum + Number(item.price) * item.quantity,
     0
   );
 
@@ -146,14 +150,17 @@ function Home() {
     cart.length > 0
       ? Math.max(
           ...cart.map(
-            (item) => Number(item.preparation_time) || 0
+            (item) =>
+              Number(item.preparation_time) || 0
           )
         )
       : 0;
 
   const placeOrder = async () => {
     if (cart.length === 0) {
-      setMessage('Please add at least one item to your cart.');
+      setMessage(
+        'Please add at least one item to your cart.'
+      );
       return;
     }
 
@@ -179,15 +186,24 @@ function Home() {
 
       const now = new Date();
 
-      const orderDate = now.toISOString().split('T')[0];
+      const orderDate = now
+        .toISOString()
+        .split('T')[0];
 
-      const orderTime = now.toTimeString().split(' ')[0];
+      const orderTime = now
+        .toTimeString()
+        .split(' ')[0];
 
       const orderData = {
         order_id: orderId,
         table_id: selectedTable,
         customer_id: selectedCustomer,
-        waiter_id: 'W001',
+
+        // The order starts unassigned.
+        // A waiter will be assigned from the
+        // Waiter Dashboard.
+        waiter_id: null,
+
         chef_id: 'CH001',
         bartender_id: 'B001',
         order_date: orderDate,
@@ -197,11 +213,11 @@ function Home() {
         total_amount: total,
       };
 
+      // Create the order first.
       await createOrder(orderData);
 
+      // Create each order item.
       for (const item of cart) {
-        // Generate a short unique order-item ID that
-        // also fits VARCHAR(20).
         const orderItemId = `OI${crypto
           .randomUUID()
           .replaceAll('-', '')
@@ -213,7 +229,8 @@ function Home() {
           menu_item_id: item.menu_item_id,
           quantity: item.quantity,
           unit_price: Number(item.price),
-          subtotal: Number(item.price) * item.quantity,
+          subtotal:
+            Number(item.price) * item.quantity,
         };
 
         await createOrderItem(orderItemData);
@@ -232,6 +249,7 @@ function Home() {
       );
     } catch (error) {
       console.error(error);
+
       setMessage(
         error.message ||
           'Something went wrong while placing your order.'
@@ -249,6 +267,7 @@ function Home() {
           <h2 className="text-3xl font-bold text-gray-900">
             Welcome to Chowly
           </h2>
+
           <p className="mt-2 text-gray-600">
             Choose a restaurant, browse the menu, and place
             your order.
@@ -261,6 +280,7 @@ function Home() {
             <h2 className="text-2xl font-bold text-gray-900">
               Restaurants
             </h2>
+
             <p className="mt-1 text-sm text-gray-500">
               Select a restaurant to view its menu.
             </p>

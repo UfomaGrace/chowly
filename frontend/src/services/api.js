@@ -1,4 +1,3 @@
-
 const API_URL = 'http://localhost:5000/api';
 
 // Helper function to handle API responses
@@ -72,6 +71,42 @@ export const getDiningTables = async () => {
   return handleResponse(
     response,
     'Failed to fetch dining tables'
+  );
+};
+
+// Get all orders
+export const getOrders = async () => {
+  const response = await fetch(`${API_URL}/orders`);
+
+  return handleResponse(
+    response,
+    'Failed to fetch orders'
+  );
+};
+
+// Get one order
+export const getOrder = async (orderId) => {
+  const response = await fetch(`${API_URL}/orders/${orderId}`);
+
+  return handleResponse(
+    response,
+    'Failed to fetch order'
+  );
+};
+
+// Update an order
+export const updateOrder = async (orderId, orderData) => {
+  const response = await fetch(`${API_URL}/orders/${orderId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(orderData),
+  });
+
+  return handleResponse(
+    response,
+    'Failed to update order'
   );
 };
 
