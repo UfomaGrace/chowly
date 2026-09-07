@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
-
-import Header from '../components/Header';
 import RestaurantCard from '../components/RestaurantCard';
 import MenuItemCard from '../components/MenuItemCard';
 import Cart from '../components/Cart';
-
 import {
   getRestaurants,
   getMenus,
@@ -19,36 +16,27 @@ function Home() {
   const [restaurants, setRestaurants] = useState([]);
   const [menus, setMenus] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
-
   const [customers, setCustomers] = useState([]);
   const [diningTables, setDiningTables] = useState([]);
 
-  const [selectedRestaurant, setSelectedRestaurant] =
-    useState(null);
-
-  const [selectedCustomer, setSelectedCustomer] =
-    useState('');
-
-  const [selectedTable, setSelectedTable] =
-    useState('');
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState('');
+  const [selectedTable, setSelectedTable] = useState('');
 
   const [cart, setCart] = useState([]);
-
-  const [isPlacingOrder, setIsPlacingOrder] =
-    useState(false);
-
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [message, setMessage] = useState('');
+  const [submittedOrder, setSubmittedOrder] = useState(null);
 
-  // Load all Chowly data
   useEffect(() => {
     const loadData = async () => {
       try {
         const [
-          restaurantData,
-          menuData,
-          menuItemData,
-          customerData,
-          tableData,
+          restaurantsData,
+          menusData,
+          menuItemsData,
+          customersData,
+          diningTablesData,
         ] = await Promise.all([
           getRestaurants(),
           getMenus(),
@@ -57,27 +45,24 @@ function Home() {
           getDiningTables(),
         ]);
 
-        setRestaurants(restaurantData);
-        setMenus(menuData);
-        setMenuItems(menuItemData);
-        setCustomers(customerData);
-        setDiningTables(tableData);
+        setRestaurants(restaurantsData);
+        setMenus(menusData);
+        setMenuItems(menuItemsData);
+        setCustomers(customersData);
+        setDiningTables(diningTablesData);
       } catch (error) {
-        console.error('Error loading Chowly data:', error);
+        console.error(error);
+        setMessage('Failed to load Chowly data.');
       }
     };
 
     loadData();
   }, []);
 
-  // Add item to cart
   const addToCart = (item) => {
-    setMessage('');
-
     setCart((currentCart) => {
       const existingItem = currentCart.find(
-        (cartItem) =>
-          cartItem.menu_item_id === item.menu_item_id
+        (cartItem) => cartItem.menu_item_id === item.menu_item_id
       );
 
       if (existingItem) {
@@ -99,9 +84,10 @@ function Home() {
         },
       ];
     });
+
+    setMessage('');
   };
 
-  // Increase quantity
   const increaseQuantity = (menuItemId) => {
     setCart((currentCart) =>
       currentCart.map((item) =>
@@ -115,7 +101,6 @@ function Home() {
     );
   };
 
-  // Decrease quantity
   const decreaseQuantity = (menuItemId) => {
     setCart((currentCart) =>
       currentCart
@@ -131,16 +116,12 @@ function Home() {
     );
   };
 
-  // Find selected restaurant's menu
   const selectedMenu = selectedRestaurant
     ? menus.find(
-        (menu) =>
-          menu.restaurant_id ===
-          selectedRestaurant.restaurant_id
+        (menu) => menu.restaurant_id === selectedRestaurant.restaurant_id
       )
     : null;
 
-  // Find selected menu's available items
   const selectedMenuItems = selectedMenu
     ? menuItems.filter(
         (item) =>
@@ -149,23 +130,30 @@ function Home() {
       )
     : [];
 
-  // Calculate cart total
   const total = cart.reduce(
-    (sum, item) =>
-      sum + Number(item.price) * item.quantity,
+    (sum, item) => sum + Number(item.price) * item.quantity,
     0
   );
 
-  // Calculate number of items
   const cartItemCount = cart.reduce(
     (sum, item) => sum + item.quantity,
     0
   );
 
-  // Place order
+  // Estimated waiting time is based on the item
+  // with the longest preparation time.
+  const waitingTime =
+    cart.length > 0
+      ? Math.max(
+          ...cart.map(
+            (item) => Number(item.preparation_time) || 0
+          )
+        )
+      : 0;
+
   const placeOrder = async () => {
     if (cart.length === 0) {
-      setMessage('Your cart is empty.');
+      setMessage('Please add at least one item to your cart.');
       return;
     }
 
@@ -179,25 +167,22 @@ function Home() {
       return;
     }
 
-    setIsPlacingOrder(true);
-    setMessage('');
-
     try {
-      // Generate unique order ID
-      const orderId = `O${Date.now()}`;
+      setIsPlacingOrder(true);
+      setMessage('');
 
-      // Get current date and time
+      // Generate a short unique ID that fits VARCHAR(20).
+      const orderId = `O${crypto
+        .randomUUID()
+        .replaceAll('-', '')
+        .slice(0, 12)}`;
+
       const now = new Date();
 
-      const orderDate = now
-        .toISOString()
-        .split('T')[0];
+      const orderDate = now.toISOString().split('T')[0];
 
-      const orderTime = now
-        .toTimeString()
-        .split(' ')[0];
+      const orderTime = now.toTimeString().split(' ')[0];
 
-      // Create order
       const orderData = {
         order_id: orderId,
         table_id: selectedTable,
@@ -207,43 +192,49 @@ function Home() {
         bartender_id: 'B001',
         order_date: orderDate,
         order_time: orderTime,
-        waiting_time: 0,
+        waiting_time: waitingTime,
         order_status: 'Pending',
         total_amount: total,
       };
 
       await createOrder(orderData);
 
-      // Create order items
       for (const item of cart) {
+        // Generate a short unique order-item ID that
+        // also fits VARCHAR(20).
+        const orderItemId = `OI${crypto
+          .randomUUID()
+          .replaceAll('-', '')
+          .slice(0, 12)}`;
+
         const orderItemData = {
-          order_item_id: `OI${Date.now()}${Math.floor(
-            Math.random() * 1000
-          )}`,
+          order_item_id: orderItemId,
           order_id: orderId,
           menu_item_id: item.menu_item_id,
           quantity: item.quantity,
           unit_price: Number(item.price),
-          subtotal:
-            Number(item.price) * item.quantity,
+          subtotal: Number(item.price) * item.quantity,
         };
 
         await createOrderItem(orderItemData);
       }
 
-      // Clear cart and selections
+      // Only show the submitted order after both
+      // the order and all order items were created.
+      setSubmittedOrder(orderData);
+
       setCart([]);
       setSelectedCustomer('');
       setSelectedTable('');
 
       setMessage(
-        `Order ${orderId} placed successfully!`
+        `Order ${orderId} has been placed successfully!`
       );
     } catch (error) {
-      console.error('Error placing order:', error);
-
+      console.error(error);
       setMessage(
-        'Failed to place order. Please try again.'
+        error.message ||
+          'Something went wrong while placing your order.'
       );
     } finally {
       setIsPlacingOrder(false);
@@ -251,26 +242,31 @@ function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-
-      <Header />
-
-      <main className="mx-auto max-w-6xl px-6 py-10">
-
-        {/* Success/Error message */}
-        {message && (
-          <div className="mb-8 rounded-lg bg-gray-900 px-5 py-4 text-white">
-            {message}
-          </div>
-        )}
+    <main className="min-h-screen bg-gray-100">
+      <div className="mx-auto max-w-7xl px-6 py-10">
+        {/* Page Introduction */}
+        <section className="mb-10">
+          <h2 className="text-3xl font-bold text-gray-900">
+            Welcome to Chowly
+          </h2>
+          <p className="mt-2 text-gray-600">
+            Choose a restaurant, browse the menu, and place
+            your order.
+          </p>
+        </section>
 
         {/* Restaurants */}
         <section>
-          <h2 className="mb-6 text-2xl font-bold text-gray-900">
-            Restaurants
-          </h2>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Restaurants
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Select a restaurant to view its menu.
+            </p>
+          </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {restaurants.map((restaurant) => (
               <RestaurantCard
                 key={restaurant.restaurant_id}
@@ -281,60 +277,51 @@ function Home() {
           </div>
         </section>
 
-        {/* Menu */}
+        {/* Selected Restaurant Menu */}
         {selectedRestaurant && (
           <section className="mt-12">
-
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                Menu
+                {selectedRestaurant.name} Menu
               </h2>
 
-              <p className="mt-1 text-gray-500">
-                {selectedRestaurant.name}
+              <p className="mt-1 text-sm text-gray-500">
+                Select the items you want to order.
               </p>
             </div>
 
-            {selectedMenu ? (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-
-                {selectedMenuItems.length > 0 ? (
-                  selectedMenuItems.map((item) => (
-                    <MenuItemCard
-                      key={item.menu_item_id}
-                      item={item}
-                      onAddToCart={addToCart}
-                    />
-                  ))
-                ) : (
-                  <p className="text-gray-500">
-                    No available items in this menu.
-                  </p>
-                )}
-
+            {selectedMenuItems.length === 0 ? (
+              <div className="rounded-xl bg-white p-6 shadow-sm">
+                <p className="text-gray-500">
+                  No available menu items found.
+                </p>
               </div>
             ) : (
-              <p className="text-gray-500">
-                No menu found for this restaurant.
-              </p>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {selectedMenuItems.map((item) => (
+                  <MenuItemCard
+                    key={item.menu_item_id}
+                    item={item}
+                    onAddToCart={addToCart}
+                  />
+                ))}
+              </div>
             )}
-
           </section>
         )}
 
-        {/* Order Form */}
+        {/* Order Information */}
         <section className="mt-12 rounded-xl bg-white p-6 shadow-sm">
-
           <h2 className="text-2xl font-bold text-gray-900">
             Order Information
           </h2>
 
-          <p className="mt-1 text-gray-500">
-            Select the customer and dining table for this order.
+          <p className="mt-1 text-sm text-gray-500">
+            Select the customer and dining table for this
+            order.
           </p>
 
-          <div className="mt-6 grid gap-6 sm:grid-cols-2">
-
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
             {/* Customer */}
             <div>
               <label
@@ -350,7 +337,7 @@ function Home() {
                 onChange={(event) =>
                   setSelectedCustomer(event.target.value)
                 }
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-900"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500"
               >
                 <option value="">
                   Select a customer
@@ -361,7 +348,7 @@ function Home() {
                     key={customer.customer_id}
                     value={customer.customer_id}
                   >
-                    {customer.name} ({customer.customer_id})
+                    {customer.name}
                   </option>
                 ))}
               </select>
@@ -382,7 +369,7 @@ function Home() {
                 onChange={(event) =>
                   setSelectedTable(event.target.value)
                 }
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-900"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500"
               >
                 <option value="">
                   Select a dining table
@@ -393,15 +380,54 @@ function Home() {
                     key={table.table_id}
                     value={table.table_id}
                   >
-                    Table {table.table_number} ({table.table_id})
+                    Table {table.table_number}
                   </option>
                 ))}
               </select>
             </div>
-
           </div>
-
         </section>
+
+        {/* Order Summary */}
+        {cart.length > 0 && (
+          <section className="mt-8 rounded-xl bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900">
+              Order Summary
+            </h2>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-lg bg-gray-50 p-4">
+                <p className="text-sm text-gray-500">
+                  Items
+                </p>
+
+                <p className="mt-1 text-lg font-bold text-gray-900">
+                  {cartItemCount}
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-gray-50 p-4">
+                <p className="text-sm text-gray-500">
+                  Estimated Waiting Time
+                </p>
+
+                <p className="mt-1 text-lg font-bold text-gray-900">
+                  {waitingTime} minutes
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-gray-50 p-4">
+                <p className="text-sm text-gray-500">
+                  Total
+                </p>
+
+                <p className="mt-1 text-lg font-bold text-gray-900">
+                  ₦{total.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Cart */}
         <Cart
@@ -414,9 +440,92 @@ function Home() {
           isPlacingOrder={isPlacingOrder}
         />
 
-      </main>
+        {/* Message */}
+        {message && (
+          <div className="mt-6 rounded-xl bg-white p-4 shadow-sm">
+            <p className="font-medium text-gray-900">
+              {message}
+            </p>
+          </div>
+        )}
 
-    </div>
+        {/* Submitted Order Details */}
+        {submittedOrder && (
+          <section className="mb-8 mt-8 rounded-xl bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Order Details
+            </h2>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <p className="text-sm text-gray-500">
+                  Order ID
+                </p>
+
+                <p className="font-semibold text-gray-900">
+                  {submittedOrder.order_id}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">
+                  Customer
+                </p>
+
+                <p className="font-semibold text-gray-900">
+                  {submittedOrder.customer_id}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">
+                  Table
+                </p>
+
+                <p className="font-semibold text-gray-900">
+                  {submittedOrder.table_id}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">
+                  Status
+                </p>
+
+                <p className="font-semibold text-gray-900">
+                  {submittedOrder.order_status}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-lg bg-gray-50 p-4">
+                <p className="text-sm text-gray-500">
+                  Estimated Waiting Time
+                </p>
+
+                <p className="mt-1 text-xl font-bold text-gray-900">
+                  {submittedOrder.waiting_time} minutes
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-gray-50 p-4">
+                <p className="text-sm text-gray-500">
+                  Total Amount
+                </p>
+
+                <p className="mt-1 text-xl font-bold text-gray-900">
+                  ₦
+                  {Number(
+                    submittedOrder.total_amount
+                  ).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
+    </main>
   );
 }
 

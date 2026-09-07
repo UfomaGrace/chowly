@@ -1,58 +1,78 @@
+
 const API_URL = 'http://localhost:5000/api';
+
+// Helper function to handle API responses
+const handleResponse = async (response, defaultMessage) => {
+  const contentType = response.headers.get('content-type');
+
+  let data;
+
+  if (contentType && contentType.includes('application/json')) {
+    data = await response.json();
+  } else {
+    data = await response.text();
+  }
+
+  if (!response.ok) {
+    const errorMessage =
+      typeof data === 'object' && data !== null
+        ? data.message || data.error || JSON.stringify(data)
+        : data || defaultMessage;
+
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
 
 // Get all restaurants
 export const getRestaurants = async () => {
   const response = await fetch(`${API_URL}/restaurants`);
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch restaurants');
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    'Failed to fetch restaurants'
+  );
 };
 
 // Get all menus
 export const getMenus = async () => {
   const response = await fetch(`${API_URL}/menus`);
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch menus');
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    'Failed to fetch menus'
+  );
 };
 
 // Get all menu items
 export const getMenuItems = async () => {
   const response = await fetch(`${API_URL}/menu-items`);
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch menu items');
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    'Failed to fetch menu items'
+  );
 };
 
 // Get all customers
 export const getCustomers = async () => {
   const response = await fetch(`${API_URL}/customers`);
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch customers');
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    'Failed to fetch customers'
+  );
 };
 
 // Get all dining tables
 export const getDiningTables = async () => {
   const response = await fetch(`${API_URL}/dining-tables`);
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch dining tables');
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    'Failed to fetch dining tables'
+  );
 };
 
 // Create an order
@@ -65,11 +85,10 @@ export const createOrder = async (orderData) => {
     body: JSON.stringify(orderData),
   });
 
-  if (!response.ok) {
-    throw new Error('Failed to create order');
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    'Failed to create order'
+  );
 };
 
 // Add items to an order
@@ -82,9 +101,8 @@ export const createOrderItem = async (orderItemData) => {
     body: JSON.stringify(orderItemData),
   });
 
-  if (!response.ok) {
-    throw new Error('Failed to create order item');
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    'Failed to create order item'
+  );
 };

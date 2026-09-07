@@ -9,9 +9,15 @@ function MenuItemCard({ item, onAddToCart }) {
         {item.description}
       </p>
 
-      <p className="mt-4 text-lg font-bold text-gray-900">
-        ₦{Number(item.price).toLocaleString()}
-      </p>
+      <div className="mt-4 flex items-center justify-between">
+        <p className="text-lg font-bold text-gray-900">
+          ₦{Number(item.price).toLocaleString()}
+        </p>
+
+        <p className="text-sm text-gray-500">
+          ⏱️ {item.preparation_time} min
+        </p>
+      </div>
 
       <button
         onClick={() => onAddToCart(item)}
